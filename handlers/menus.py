@@ -11,15 +11,15 @@ def get_main_menu() -> InlineKeyboardMarkup:
     """ساخت دکمه‌های شیشه‌ای منوی اصلی پنل مدیریت"""
     buttons = [
         [
-            InlineKeyboardButton(text="📊 وضعیت اشتراک", callback_query_data="panel_status"),
-            InlineKeyboardButton(text="💬 چت‌های متصل", callback_query_data="panel_chats")
+            InlineKeyboardButton(text="📊 وضعیت اشتراک", callback_data="panel_status"),
+            InlineKeyboardButton(text="💬 چت‌های متصل", callback_data="panel_chats")
         ],
         [
-            InlineKeyboardButton(text="👮‍♂️ مدیران فرعی", callback_query_data="panel_admins"),
-            InlineKeyboardButton(text="👥 آمار لیست سفید", callback_query_data="panel_whitelist")
+            InlineKeyboardButton(text="👮‍♂️ مدیران فرعی", callback_data="panel_admins"),
+            InlineKeyboardButton(text="👥 آمار لیست سفید", callback_data="panel_whitelist")
         ],
         [
-            InlineKeyboardButton(text="🔄 به‌روزرسانی پنل", callback_query_data="panel_main")
+            InlineKeyboardButton(text="🔄 به‌روزرسانی پنل", callback_data="panel_main")
         ]
     ]
     return InlineKeyboardMarkup(inline_keyboard=buttons)
@@ -64,7 +64,7 @@ async def view_status(callback: CallbackQuery, is_tenant_owner: bool = False, te
     # اگر اونر اصلی است و دیتابیس هنوز مشتری ندارد
     if is_owner and (tenant_id is None or tenant_id == 1):
         text = "👑 **محیط تست مدیریت کل (Owner)**\n\nوضعیت: شما مالک اصلی ربات هستید.\nهیچ مشتری یا لایسنسی هنوز در دیتابیس ثبت نشده است."
-        back_button = InlineKeyboardMarkup(inline_keyboard=[[InlineKeyboardButton(text="🔙 بازگشت", callback_query_data="panel_main")]])
+        back_button = InlineKeyboardMarkup(inline_keyboard=[[InlineKeyboardButton(text="🔙 بازگشت", callback_data="panel_main")]])
         await callback.message.edit_text(text, reply_markup=back_button, parse_mode="Markdown")
         return
 
@@ -87,7 +87,7 @@ async def view_status(callback: CallbackQuery, is_tenant_owner: bool = False, te
     )
 
     back_button = InlineKeyboardMarkup(inline_keyboard=[
-        [InlineKeyboardButton(text="🔙 بازگشت به منو", callback_query_data="panel_main")]
+        [InlineKeyboardButton(text="🔙 بازگشت به منو", callback_data="panel_main")]
     ])
     
     await callback.message.edit_text(text, reply_markup=back_button, parse_mode="Markdown")
@@ -101,7 +101,7 @@ async def view_chats(callback: CallbackQuery, is_tenant_owner: bool = False, ten
 
     if is_owner and (tenant_id is None or tenant_id == 1):
         text = "💬 **لیست چت‌ها (محیط تست اونر)**\n\n❌ هنوز هیچ مجموعه‌ای ثبت نشده است."
-        back_button = InlineKeyboardMarkup(inline_keyboard=[[InlineKeyboardButton(text="🔙 بازگشت", callback_query_data="panel_main")]])
+        back_button = InlineKeyboardMarkup(inline_keyboard=[[InlineKeyboardButton(text="🔙 بازگشت", callback_data="panel_main")]])
         await callback.message.edit_text(text, reply_markup=back_button, parse_mode="Markdown")
         return
 
@@ -119,7 +119,7 @@ async def view_chats(callback: CallbackQuery, is_tenant_owner: bool = False, ten
             text += f"{idx}. {type_emoji} آیدی چت: `{chat.chat_id}`\n   🪵 کانال لاگ: {log_status}\n\n"
 
     back_button = InlineKeyboardMarkup(inline_keyboard=[
-        [InlineKeyboardButton(text="🔙 بازگشت به منو", callback_query_data="panel_main")]
+        [InlineKeyboardButton(text="🔙 بازگشت به منو", callback_data="panel_main")]
     ])
     
     await callback.message.edit_text(text, reply_markup=back_button, parse_mode="Markdown")
@@ -133,7 +133,7 @@ async def view_admins(callback: CallbackQuery, is_tenant_owner: bool = False, te
 
     if is_owner and (tenant_id is None or tenant_id == 1):
         text = "👮‍♂️ **مدیران فرعی (محیط تست اونر)**\n\n❌ هنوز هیچ مجموعه‌ای ثبت نشده است."
-        back_button = InlineKeyboardMarkup(inline_keyboard=[[InlineKeyboardButton(text="🔙 بازگشت", callback_query_data="panel_main")]])
+        back_button = InlineKeyboardMarkup(inline_keyboard=[[InlineKeyboardButton(text="🔙 بازگشت", callback_data="panel_main")]])
         await callback.message.edit_text(text, reply_markup=back_button, parse_mode="Markdown")
         return
 
@@ -149,7 +149,7 @@ async def view_admins(callback: CallbackQuery, is_tenant_owner: bool = False, te
             text += f"{idx}. 👤 آیدی عددی ادمین: `{adm.admin_id}`\n"
 
     back_button = InlineKeyboardMarkup(inline_keyboard=[
-        [InlineKeyboardButton(text="🔙 بازگشت به منو", callback_query_data="panel_main")]
+        [InlineKeyboardButton(text="🔙 بازگشت به منو", callback_data="panel_main")]
     ])
     
     await callback.message.edit_text(text, reply_markup=back_button, parse_mode="Markdown")
@@ -163,7 +163,7 @@ async def view_whitelist_stats(callback: CallbackQuery, is_tenant_owner: bool = 
 
     if is_owner and (tenant_id is None or tenant_id == 1):
         text = "👥 **آمار لیست سفید (محیط تست اونر)**\n\n❌ هنوز هیچ مجموعه‌ای ثبت نشده است."
-        back_button = InlineKeyboardMarkup(inline_keyboard=[[InlineKeyboardButton(text="🔙 بازگشت", callback_query_data="panel_main")]])
+        back_button = InlineKeyboardMarkup(inline_keyboard=[[InlineKeyboardButton(text="🔙 بازگشت", callback_data="panel_main")]])
         await callback.message.edit_text(text, reply_markup=back_button, parse_mode="Markdown")
         return
 
@@ -178,7 +178,7 @@ async def view_whitelist_stats(callback: CallbackQuery, is_tenant_owner: bool = 
     )
 
     back_button = InlineKeyboardMarkup(inline_keyboard=[
-        [InlineKeyboardButton(text="🔙 بازگشت به منو", callback_query_data="panel_main")]
+        [InlineKeyboardButton(text="🔙 بازگشت به منو", callback_data="panel_main")]
     ])
     
     await callback.message.edit_text(text, reply_markup=back_button, parse_mode="Markdown")
