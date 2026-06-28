@@ -7,7 +7,7 @@ from aiogram.fsm.storage.memory import MemoryStorage
 from config import Config
 from database.connection import init_db
 from middlewares.auth import AuthMiddleware
-from handlers import owner, buyer, whitelist, anti_raid
+from handlers import owner, buyer, whitelist, anti_raid, menus
 
 # تنظیمات لاگر برای عیب‌یابی و مانیتورینگ ربات در ترمینال/VPS
 logging.basicConfig(
@@ -30,17 +30,17 @@ async def main():
     dp.update.outer_middleware(AuthMiddleware())
 
     # ۴. اتصال روترها (هندلرها) به دیسپچر اصلی
-    # ترتیب قرارگیری مهم است تا دستورات تداخل نداشته باشند
     dp.include_router(owner.router)
     dp.include_router(buyer.router)
     dp.include_router(whitelist.router)
     dp.include_router(anti_raid.router)
+    dp.include_router(menus.router)  # روتر پنل شیشه‌ای ادمین
 
     logger.info("روترها و ماژول‌های ربات با موفقیت بارگذاری شدند.")
 
     # ۵. حذف وب‌هوک‌های قدیمی و استارت زدن پولینگ (Polling) ربات
     await bot.delete_webhook(drop_pending_updates=True)
-    logger.info("ربات امنیتی با موفقیت روشن شد و در حال گوش دادن به پیام‌هاست...")
+    logger.info("ربات امنیتی با موفقیت روشن شد...")
     
     try:
         await dp.start_polling(bot)
