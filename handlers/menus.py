@@ -1,6 +1,7 @@
 from aiogram import Router, Bot, F
 from aiogram.filters import Command
 from aiogram.types import Message, CallbackQuery, InlineKeyboardMarkup, InlineKeyboardButton
+from aiogram.exceptions import TelegramBadRequest
 from sqlalchemy.future import select
 from database.connection import AsyncSessionLocal
 from database.models import Tenant, ProtectedChat, BotAdmin, WhitelistedUser
@@ -47,25 +48,34 @@ async def back_to_main(callback: CallbackQuery, is_tenant_owner: bool = False, i
         await callback.answer("❌ دسترسی غیرمجاز", show_alert=True)
         return
         
-    await callback.message.edit_text(
-        "🛡 **به پنل مدیریت هوشمند مجموعه خود خوش آمدید**\n\n"
-        "جهت مدیریت بخش‌های مختلف ربات امنیتی، از دکمه‌های شیشه‌ای زیر استفاده کنید:",
-        reply_markup=get_main_menu(),
-        parse_mode="Markdown"
-    )
+    try:
+        await callback.message.edit_text(
+            "🛡 **به پنل مدیریت هوشمند مجموعه خود خوش آمدید**\n\n"
+            "جهت مدیریت بخش‌های مختلف ربات امنیتی، از دکمه‌های شیشه‌ای زیر استفاده کنید:",
+            reply_markup=get_main_menu(),
+            parse_mode="Markdown"
+        )
+        await callback.answer("✅ پنل به‌روزرسانی شد")
+    except TelegramBadRequest:
+        # اگر متن تغییری نکرده بود، فقط پاپ‌آپ نشون بده و ارور رو نادیده بگیر
+        await callback.answer("✅ پنل به‌روز است")
 
 
 @router.callback_query(F.data == "panel_status")
 async def view_status(callback: CallbackQuery, is_tenant_owner: bool = False, tenant_id: int = None, is_owner: bool = False):
     """نمایش وضعیت لایسنس و تاریخ انقضا"""
     if not is_tenant_owner and not is_owner:
+        await callback.answer("❌ دسترسی غیرمجاز", show_alert=True)
         return
 
-    # اگر اونر اصلی است و دیتابیس هنوز مشتری ندارد
     if is_owner and (tenant_id is None or tenant_id == 1):
         text = "👑 **محیط تست مدیریت کل (Owner)**\n\nوضعیت: شما مالک اصلی ربات هستید.\nهیچ مشتری یا لایسنسی هنوز در دیتابیس ثبت نشده است."
         back_button = InlineKeyboardMarkup(inline_keyboard=[[InlineKeyboardButton(text="🔙 بازگشت", callback_data="panel_main")]])
-        await callback.message.edit_text(text, reply_markup=back_button, parse_mode="Markdown")
+        try:
+            await callback.message.edit_text(text, reply_markup=back_button, parse_mode="Markdown")
+        except TelegramBadRequest:
+            pass
+        await callback.answer()
         return
 
     async with AsyncSessionLocal() as session:
@@ -73,7 +83,7 @@ async def view_status(callback: CallbackQuery, is_tenant_owner: bool = False, te
         tenant = query.scalar_one_or_none()
 
     if not tenant:
-        await callback.answer("خطا در یافتن اطلاعات مجموعه")
+        await callback.answer("خطا در یافتن اطلاعات مجموعه", show_alert=True)
         return
 
     expire_date = tenant.expires_at.strftime('%Y-%m-%d %H:%M')
@@ -90,19 +100,28 @@ async def view_status(callback: CallbackQuery, is_tenant_owner: bool = False, te
         [InlineKeyboardButton(text="🔙 بازگشت به منو", callback_data="panel_main")]
     ])
     
-    await callback.message.edit_text(text, reply_markup=back_button, parse_mode="Markdown")
+    try:
+        await callback.message.edit_text(text, reply_markup=back_button, parse_mode="Markdown")
+    except TelegramBadRequest:
+        pass
+    await callback.answer()
 
 
 @router.callback_query(F.data == "panel_chats")
 async def view_chats(callback: CallbackQuery, is_tenant_owner: bool = False, tenant_id: int = None, is_owner: bool = False):
     """نمایش لیست تمام گروه‌ها و کانال‌های متصل شده"""
     if not is_tenant_owner and not is_owner:
+        await callback.answer("❌ دسترسی غیرمجاز", show_alert=True)
         return
 
     if is_owner and (tenant_id is None or tenant_id == 1):
         text = "💬 **لیست چت‌ها (محیط تست اونر)**\n\n❌ هنوز هیچ مجموعه‌ای ثبت نشده است."
         back_button = InlineKeyboardMarkup(inline_keyboard=[[InlineKeyboardButton(text="🔙 بازگشت", callback_data="panel_main")]])
-        await callback.message.edit_text(text, reply_markup=back_button, parse_mode="Markdown")
+        try:
+            await callback.message.edit_text(text, reply_markup=back_button, parse_mode="Markdown")
+        except TelegramBadRequest:
+            pass
+        await callback.answer()
         return
 
     async with AsyncSessionLocal() as session:
@@ -122,19 +141,28 @@ async def view_chats(callback: CallbackQuery, is_tenant_owner: bool = False, ten
         [InlineKeyboardButton(text="🔙 بازگشت به منو", callback_data="panel_main")]
     ])
     
-    await callback.message.edit_text(text, reply_markup=back_button, parse_mode="Markdown")
+    try:
+        await callback.message.edit_text(text, reply_markup=back_button, parse_mode="Markdown")
+    except TelegramBadRequest:
+        pass
+    await callback.answer()
 
 
 @router.callback_query(F.data == "panel_admins")
 async def view_admins(callback: CallbackQuery, is_tenant_owner: bool = False, tenant_id: int = None, is_owner: bool = False):
     """نمایش لیست ادمین‌های فرعی مجموعه"""
     if not is_tenant_owner and not is_owner:
+        await callback.answer("❌ دسترسی غیرمجاز", show_alert=True)
         return
 
     if is_owner and (tenant_id is None or tenant_id == 1):
         text = "👮‍♂️ **مدیران فرعی (محیط تست اونر)**\n\n❌ هنوز هیچ مجموعه‌ای ثبت نشده است."
         back_button = InlineKeyboardMarkup(inline_keyboard=[[InlineKeyboardButton(text="🔙 بازگشت", callback_data="panel_main")]])
-        await callback.message.edit_text(text, reply_markup=back_button, parse_mode="Markdown")
+        try:
+            await callback.message.edit_text(text, reply_markup=back_button, parse_mode="Markdown")
+        except TelegramBadRequest:
+            pass
+        await callback.answer()
         return
 
     async with AsyncSessionLocal() as session:
@@ -152,19 +180,28 @@ async def view_admins(callback: CallbackQuery, is_tenant_owner: bool = False, te
         [InlineKeyboardButton(text="🔙 بازگشت به منو", callback_data="panel_main")]
     ])
     
-    await callback.message.edit_text(text, reply_markup=back_button, parse_mode="Markdown")
+    try:
+        await callback.message.edit_text(text, reply_markup=back_button, parse_mode="Markdown")
+    except TelegramBadRequest:
+        pass
+    await callback.answer()
 
 
 @router.callback_query(F.data == "panel_whitelist")
 async def view_whitelist_stats(callback: CallbackQuery, is_tenant_owner: bool = False, tenant_id: int = None, is_owner: bool = False):
     """نمایش آمار کاربران ثبت‌نام شده در لیست سفید"""
     if not is_tenant_owner and not is_owner:
+        await callback.answer("❌ دسترسی غیرمجاز", show_alert=True)
         return
 
     if is_owner and (tenant_id is None or tenant_id == 1):
         text = "👥 **آمار لیست سفید (محیط تست اونر)**\n\n❌ هنوز هیچ مجموعه‌ای ثبت نشده است."
         back_button = InlineKeyboardMarkup(inline_keyboard=[[InlineKeyboardButton(text="🔙 بازگشت", callback_data="panel_main")]])
-        await callback.message.edit_text(text, reply_markup=back_button, parse_mode="Markdown")
+        try:
+            await callback.message.edit_text(text, reply_markup=back_button, parse_mode="Markdown")
+        except TelegramBadRequest:
+            pass
+        await callback.answer()
         return
 
     async with AsyncSessionLocal() as session:
@@ -181,4 +218,8 @@ async def view_whitelist_stats(callback: CallbackQuery, is_tenant_owner: bool = 
         [InlineKeyboardButton(text="🔙 بازگشت به منو", callback_data="panel_main")]
     ])
     
-    await callback.message.edit_text(text, reply_markup=back_button, parse_mode="Markdown")
+    try:
+        await callback.message.edit_text(text, reply_markup=back_button, parse_mode="Markdown")
+    except TelegramBadRequest:
+        pass
+    await callback.answer()
