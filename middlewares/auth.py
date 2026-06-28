@@ -23,7 +23,8 @@ class AuthMiddleware(BaseMiddleware):
 
         user_id = user.id
         
-        data["is_owner"] = (user_id == Config.OWNER_ID)
+        # تبدیل هر دو آیدی به متن (String) برای جلوگیری از باگ عدم تطابق نوع داده
+        data["is_owner"] = (str(user_id) == str(Config.OWNER_ID))
         data["is_tenant_owner"] = False
         data["is_bot_admin"] = False
         data["tenant_id"] = None
@@ -37,7 +38,6 @@ class AuthMiddleware(BaseMiddleware):
                 if first_tenant:
                     data["tenant_id"] = first_tenant.id
                 else:
-                    # اگر هنوز هیچ تیوتی در دیتابیس نبود، یک آیدی فرضی ۱ بده تا دکمه‌ها کرش نکنند
                     data["tenant_id"] = 1
             return await handler(event, data)
 
