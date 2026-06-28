@@ -14,7 +14,6 @@ class AuthMiddleware(BaseMiddleware):
         data: Dict[str, Any]
     ) -> Any:
         
-        # پیدا کردن اطلاعات کاربر از روی پیام یا کال‌بک کئوری
         user = None
         if isinstance(event, (Message, CallbackQuery)):
             user = event.from_user
@@ -24,19 +23,15 @@ class AuthMiddleware(BaseMiddleware):
 
         user_id = user.id
         
-        # مقادیر پیش‌فرض نقش‌ها
         data["is_owner"] = (user_id == Config.OWNER_ID)
         data["is_tenant_owner"] = False
         data["is_bot_admin"] = False
         data["tenant_id"] = None
 
-        # اگر اونر اصلی (تو) بود، نیازی به چک کردن بقیه نقش‌ها نیست
         if data["is_owner"]:
             return await handler(event, data)
 
-        # بررسی وضعیت در دیتابیس
         async with AsyncSessionLocal() as session:
-            # ۱. بررسی اینکه آیا کاربر خریدار (Tenant Owner) است؟
             tenant_query = await session.execute(
                 select(Tenant).where(Tenant.owner_id == user_id, Tenant.is_active == True)
             )
@@ -47,14 +42,12 @@ class AuthMiddleware(BaseMiddleware):
                 data["tenant_id"] = tenant.id
                 return await handler(event, data)
 
-            # ۲. بررسی اینکه آیا کاربر ادمین فرعی یک مجموعه است؟
             admin_query = await session.execute(
                 select(BotAdmin).where(BotAdmin.admin_id == user_id)
             )
             bot_admin = admin_query.scalar_one_or_none()
 
             if bot_admin:
-                # چک کردن اینکه آیا مجموعه این ادمین همچنان فعال است؟
                 active_tenant_query = await session.execute(
                     select(Tenant).where(Tenant.id == bot_admin.tenant_id, Tenant.is_active == True)
                 )
