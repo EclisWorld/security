@@ -1,6 +1,6 @@
 from typing import Any, Awaitable, Callable, Dict
 from aiogram import BaseMiddleware
-from aiogram.types import TelegramObject, Message, CallbackQuery
+from aiogram.types import TelegramObject, User
 from sqlalchemy.future import select
 from config import Config
 from database.connection import AsyncSessionLocal
@@ -14,22 +14,19 @@ class AuthMiddleware(BaseMiddleware):
         data: Dict[str, Any]
     ) -> Any:
         
-        user = None
-        if isinstance(event, (Message, CallbackQuery)):
-            user = event.from_user
+        # استخراج مستقیم یوزر از دیتای خود aiogram (بدون درگیری با نوع آپدیت)
+        user: User = data.get("event_from_user")
 
         if not user:
             return await handler(event, data)
 
         user_id = user.id
         
-        # تبدیل هر دو آیدی به متن (String) برای جلوگیری از باگ عدم تطابق نوع داده
         data["is_owner"] = (str(user_id) == str(Config.OWNER_ID))
         data["is_tenant_owner"] = False
         data["is_bot_admin"] = False
         data["tenant_id"] = None
 
-        # اگر اونر اصلی (تو) بودی، بدون نیاز به لایسنس دسترسی داری
         if data["is_owner"]:
             data["is_tenant_owner"] = True
             async with AsyncSessionLocal() as session:
@@ -42,7 +39,6 @@ class AuthMiddleware(BaseMiddleware):
             return await handler(event, data)
 
         async with AsyncSessionLocal() as session:
-            # بررسی وضعیت مشتریان واقعی
             tenant_query = await session.execute(
                 select(Tenant).where(Tenant.owner_id == user_id, Tenant.is_active == True)
             )
@@ -53,7 +49,6 @@ class AuthMiddleware(BaseMiddleware):
                 data["tenant_id"] = tenant.id
                 return await handler(event, data)
 
-            # بررسی وضعیت ادمین‌های فرعی
             admin_query = await session.execute(
                 select(BotAdmin).where(BotAdmin.admin_id == user_id)
             )
