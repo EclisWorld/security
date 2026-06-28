@@ -23,13 +23,12 @@ class AuthMiddleware(BaseMiddleware):
 
         user_id = user.id
         
-        # مقداردهی اولیه متغیرهای دسترسی در داتا
         data["is_owner"] = (user_id == Config.OWNER_ID)
         data["is_tenant_owner"] = False
         data["is_bot_admin"] = False
         data["tenant_id"] = None
 
-        # اگر اونر اصلی (خودت) بودی، دسترسی‌های خریدار هم داده بشه تا پنل باز شه
+        # اگر اونر اصلی (تو) بودی، بدون نیاز به لایسنس دسترسی داری
         if data["is_owner"]:
             data["is_tenant_owner"] = True
             async with AsyncSessionLocal() as session:
@@ -37,10 +36,13 @@ class AuthMiddleware(BaseMiddleware):
                 first_tenant = tenant_query.scalar_one_or_none()
                 if first_tenant:
                     data["tenant_id"] = first_tenant.id
+                else:
+                    # اگر هنوز هیچ تیوتی در دیتابیس نبود، یک آیدی فرضی ۱ بده تا دکمه‌ها کرش نکنند
+                    data["tenant_id"] = 1
             return await handler(event, data)
 
         async with AsyncSessionLocal() as session:
-            # بررسی وضعیت خریدار اصلی
+            # بررسی وضعیت مشتریان واقعی
             tenant_query = await session.execute(
                 select(Tenant).where(Tenant.owner_id == user_id, Tenant.is_active == True)
             )
@@ -51,7 +53,7 @@ class AuthMiddleware(BaseMiddleware):
                 data["tenant_id"] = tenant.id
                 return await handler(event, data)
 
-            # بررسی وضعیت ادمین فرعی
+            # بررسی وضعیت ادمین‌های فرعی
             admin_query = await session.execute(
                 select(BotAdmin).where(BotAdmin.admin_id == user_id)
             )
