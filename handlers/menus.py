@@ -8,6 +8,7 @@ from database.models import Tenant, ProtectedChat, BotAdmin, WhitelistedUser
 router = Router()
 
 def get_main_menu() -> InlineKeyboardMarkup:
+    """ساخت دکمه‌های شیشه‌ای منوی اصلی پنل مدیریت"""
     buttons = [
         [
             InlineKeyboardButton(text="📊 وضعیت اشتراک", callback_query_data="panel_status"),
@@ -25,8 +26,9 @@ def get_main_menu() -> InlineKeyboardMarkup:
 
 
 @router.message(Command("panel"))
-async def open_panel(message: Message, is_tenant_owner: bool = False):
-    if not is_tenant_owner:
+async def open_panel(message: Message, is_tenant_owner: bool = False, is_owner: bool = False):
+    """باز کردن پنل اصلی مدیریت با دکمه‌های شیشه‌ای"""
+    if not is_tenant_owner and not is_owner:
         await message.reply("❌ شما اشتراک فعالی ندارید یا دسترسی شما مجاز نیست.")
         return
         
@@ -39,8 +41,9 @@ async def open_panel(message: Message, is_tenant_owner: bool = False):
 
 
 @router.callback_query(F.data == "panel_main")
-async def back_to_main(callback: CallbackQuery, is_tenant_owner: bool = False):
-    if not is_tenant_owner:
+async def back_to_main(callback: CallbackQuery, is_tenant_owner: bool = False, is_owner: bool = False):
+    """برگشت به منوی اصلی پنل"""
+    if not is_tenant_owner and not is_owner:
         await callback.answer("❌ دسترسی غیرمجاز", show_alert=True)
         return
         
@@ -54,12 +57,13 @@ async def back_to_main(callback: CallbackQuery, is_tenant_owner: bool = False):
 
 @router.callback_query(F.data == "panel_status")
 async def view_status(callback: CallbackQuery, is_tenant_owner: bool = False, tenant_id: int = None, is_owner: bool = False):
-    if not is_tenant_owner or not tenant_id:
+    """نمایش وضعیت لایسنس و تاریخ انقضا"""
+    if not is_tenant_owner and not is_owner:
         return
 
     # اگر اونر اصلی است و دیتابیس هنوز مشتری ندارد
-    if is_owner and tenant_id == 1:
-        text = "👑 **محیط تست مدیریت کل**\n\nوضعیت: شما مالک اصلی ربات هستید.\nهیچ مشتری یا لایسنسی هنوز در دیتابیس ثبت نشده است."
+    if is_owner and (tenant_id is None or tenant_id == 1):
+        text = "👑 **محیط تست مدیریت کل (Owner)**\n\nوضعیت: شما مالک اصلی ربات هستید.\nهیچ مشتری یا لایسنسی هنوز در دیتابیس ثبت نشده است."
         back_button = InlineKeyboardMarkup(inline_keyboard=[[InlineKeyboardButton(text="🔙 بازگشت", callback_query_data="panel_main")]])
         await callback.message.edit_text(text, reply_markup=back_button, parse_mode="Markdown")
         return
@@ -91,10 +95,11 @@ async def view_status(callback: CallbackQuery, is_tenant_owner: bool = False, te
 
 @router.callback_query(F.data == "panel_chats")
 async def view_chats(callback: CallbackQuery, is_tenant_owner: bool = False, tenant_id: int = None, is_owner: bool = False):
-    if not is_tenant_owner or not tenant_id:
+    """نمایش لیست تمام گروه‌ها و کانال‌های متصل شده"""
+    if not is_tenant_owner and not is_owner:
         return
 
-    if is_owner and tenant_id == 1:
+    if is_owner and (tenant_id is None or tenant_id == 1):
         text = "💬 **لیست چت‌ها (محیط تست اونر)**\n\n❌ هنوز هیچ مجموعه‌ای ثبت نشده است."
         back_button = InlineKeyboardMarkup(inline_keyboard=[[InlineKeyboardButton(text="🔙 بازگشت", callback_query_data="panel_main")]])
         await callback.message.edit_text(text, reply_markup=back_button, parse_mode="Markdown")
@@ -122,10 +127,11 @@ async def view_chats(callback: CallbackQuery, is_tenant_owner: bool = False, ten
 
 @router.callback_query(F.data == "panel_admins")
 async def view_admins(callback: CallbackQuery, is_tenant_owner: bool = False, tenant_id: int = None, is_owner: bool = False):
-    if not is_tenant_owner or not tenant_id:
+    """نمایش لیست ادمین‌های فرعی مجموعه"""
+    if not is_tenant_owner and not is_owner:
         return
 
-    if is_owner and tenant_id == 1:
+    if is_owner and (tenant_id is None or tenant_id == 1):
         text = "👮‍♂️ **مدیران فرعی (محیط تست اونر)**\n\n❌ هنوز هیچ مجموعه‌ای ثبت نشده است."
         back_button = InlineKeyboardMarkup(inline_keyboard=[[InlineKeyboardButton(text="🔙 بازگشت", callback_query_data="panel_main")]])
         await callback.message.edit_text(text, reply_markup=back_button, parse_mode="Markdown")
@@ -151,10 +157,11 @@ async def view_admins(callback: CallbackQuery, is_tenant_owner: bool = False, te
 
 @router.callback_query(F.data == "panel_whitelist")
 async def view_whitelist_stats(callback: CallbackQuery, is_tenant_owner: bool = False, tenant_id: int = None, is_owner: bool = False):
-    if not is_tenant_owner or not tenant_id:
+    """نمایش آمار کاربران ثبت‌نام شده در لیست سفید"""
+    if not is_tenant_owner and not is_owner:
         return
 
-    if is_owner and tenant_id == 1:
+    if is_owner and (tenant_id is None or tenant_id == 1):
         text = "👥 **آمار لیست سفید (محیط تست اونر)**\n\n❌ هنوز هیچ مجموعه‌ای ثبت نشده است."
         back_button = InlineKeyboardMarkup(inline_keyboard=[[InlineKeyboardButton(text="🔙 بازگشت", callback_query_data="panel_main")]])
         await callback.message.edit_text(text, reply_markup=back_button, parse_mode="Markdown")
