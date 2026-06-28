@@ -8,7 +8,6 @@ from database.models import Tenant, ProtectedChat, BotAdmin, WhitelistedUser
 router = Router()
 
 def get_main_menu() -> InlineKeyboardMarkup:
-    """ساخت دکمه‌های شیشه‌ای منوی اصلی پنل مدیریت"""
     buttons = [
         [
             InlineKeyboardButton(text="📊 وضعیت اشتراک", callback_query_data="panel_status"),
@@ -26,8 +25,7 @@ def get_main_menu() -> InlineKeyboardMarkup:
 
 
 @router.message(Command("panel"))
-async def open_panel(message: Message, is_tenant_owner: bool):
-    """باز کردن پنل اصلی مدیریت با دکمه‌های شیشه‌ای"""
+async def open_panel(message: Message, is_tenant_owner: bool = False):
     if not is_tenant_owner:
         await message.reply("❌ شما اشتراک فعالی ندارید یا دسترسی شما مجاز نیست.")
         return
@@ -41,8 +39,7 @@ async def open_panel(message: Message, is_tenant_owner: bool):
 
 
 @router.callback_query(F.data == "panel_main")
-async def back_to_main(callback: CallbackQuery, is_tenant_owner: bool):
-    """برگشت به منوی اصلی پنل"""
+async def back_to_main(callback: CallbackQuery, is_tenant_owner: bool = False):
     if not is_tenant_owner:
         await callback.answer("❌ دسترسی غیرمجاز", show_alert=True)
         return
@@ -56,9 +53,8 @@ async def back_to_main(callback: CallbackQuery, is_tenant_owner: bool):
 
 
 @router.callback_query(F.data == "panel_status")
-async def view_status(callback: CallbackQuery, is_tenant_owner: bool, tenant_id: int):
-    """نمایش وضعیت لایسنس و تاریخ انقضا"""
-    if not is_tenant_owner:
+async def view_status(callback: CallbackQuery, is_tenant_owner: bool = False, tenant_id: int = None):
+    if not is_tenant_owner or not tenant_id:
         return
 
     async with AsyncSessionLocal() as session:
@@ -87,9 +83,8 @@ async def view_status(callback: CallbackQuery, is_tenant_owner: bool, tenant_id:
 
 
 @router.callback_query(F.data == "panel_chats")
-async def view_chats(callback: CallbackQuery, is_tenant_owner: bool, tenant_id: int):
-    """نمایش لیست تمام گروه‌ها و کانال‌های متصل شده"""
-    if not is_tenant_owner:
+async def view_chats(callback: CallbackQuery, is_tenant_owner: bool = False, tenant_id: int = None):
+    if not is_tenant_owner or not tenant_id:
         return
 
     async with AsyncSessionLocal() as session:
@@ -113,9 +108,8 @@ async def view_chats(callback: CallbackQuery, is_tenant_owner: bool, tenant_id: 
 
 
 @router.callback_query(F.data == "panel_admins")
-async def view_admins(callback: CallbackQuery, is_tenant_owner: bool, tenant_id: int):
-    """نمایش لیست ادمین‌های فرعی مجموعه"""
-    if not is_tenant_owner:
+async def view_admins(callback: CallbackQuery, is_tenant_owner: bool = False, tenant_id: int = None):
+    if not is_tenant_owner or not tenant_id:
         return
 
     async with AsyncSessionLocal() as session:
@@ -137,13 +131,11 @@ async def view_admins(callback: CallbackQuery, is_tenant_owner: bool, tenant_id:
 
 
 @router.callback_query(F.data == "panel_whitelist")
-async def view_whitelist_stats(callback: CallbackQuery, is_tenant_owner: bool, tenant_id: int):
-    """نمایش آمار کاربران ثبت‌نام شده"""
-    if not is_tenant_owner:
+async def view_whitelist_stats(callback: CallbackQuery, is_tenant_owner: bool = False, tenant_id: int = None):
+    if not is_tenant_owner or not tenant_id:
         return
 
     async with AsyncSessionLocal() as session:
-        # شمارش کاربران در لیست سفید
         query = await session.execute(select(WhitelistedUser).where(WhitelistedUser.tenant_id == tenant_id))
         count = len(query.scalars().all())
 
