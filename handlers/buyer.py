@@ -1,10 +1,10 @@
 from datetime import datetime, timedelta
-from aiogram import Router, F
+from aiogram import Router, Bot, F
 from aiogram.filters import Command, CommandStart
 from aiogram.types import Message
 from sqlalchemy.future import select
 from database.connection import AsyncSessionLocal
-from database.models import LicenseKey, Tenant, ProtectedChat
+from database.models import LicenseKey, Tenant, ProtectedChat, WhitelistedUser
 
 router = Router()
 
@@ -79,7 +79,8 @@ async def activate_license(message: Message):
     await message.reply(msg_text, parse_mode="Markdown")
 
 @router.message(Command("addchat"))
-async def add_protected_chat(message: Message):
+async def add_protected_chat(message: Message, bot: Bot):
+    """اتصال چت جدید به مجموعه و اسکن/سینک اولیه اعضا و ادمین‌ها"""
     if message.chat.type == "private":
         await message.reply("❌ این دستور باید در گروه یا کانالی که قصد محافظت از آن را دارید ارسال شود.")
         return
@@ -90,11 +91,13 @@ async def add_protected_chat(message: Message):
 
     async with AsyncSessionLocal() as session:
         # چک کردن دسترسی فعال خریدار
-        tenant_query = await session.execute(select(Tenant).where(Tenant.owner_id == user_id, Tenant.is_active == True))
+        tenant_query = await session.execute(
+            select(Tenant).where(Tenant.owner_id == user_id, Tenant.is_active == True)
+        )
         tenant = tenant_query.scalar_one_or_none()
         
         if not tenant:
-            await message.reply("❌ شما اشتراک فعالی در ربات ندارید یا خریدار اصلی این مجموعه نیستید.")
+            await message.reply("❌ شما اشتراک فعالی ندارید یا خریدار اصلی این مجموعه نیستید.")
             return
 
         chat_query = await session.execute(select(ProtectedChat).where(ProtectedChat.chat_id == chat_id))
@@ -104,8 +107,43 @@ async def add_protected_chat(message: Message):
             await message.reply("❌ این چت قبلاً در سیستم ثبت شده است.")
             return
 
+        # ۱. ثبت چت جدید در زون امنیتی مجموعه
         new_chat = ProtectedChat(tenant_id=tenant.id, chat_id=chat_id, chat_type=chat_type)
         session.add(new_chat)
-        await session.commit()
+        await session.flush() # دریافت آیدی چت بدون کامیت نهایی برای امنیت تداخل
 
-    await message.reply(f"✅ این {chat_type} با موفقیت به زون امنیتی مجموعه شما متصل شد.")
+        # ۲. اسکن و سینک اولیه ادمین‌های فعلی گروه/کانال برای جلوگیری از باگ دسترسی
+        try:
+            admins = await bot.get_chat_administrators(chat_id=chat_id)
+            added_admins_count = 0
+            
+            for admin in admins:
+                if admin.user.is_bot:
+                    continue
+                
+                # بررسی اینکه کاربر از قبل در لیست سفید این تِنانت هست یا نه
+                whitelist_query = await session.execute(
+                    select(WhitelistedUser).where(
+                        WhitelistedUser.tenant_id == tenant.id, 
+                        WhitelistedUser.user_id == admin.user.id
+                    )
+                )
+                if not whitelist_query.scalar_one_or_none():
+                    new_white_user = WhitelistedUser(tenant_id=tenant.id, user_id=admin.user.id)
+                    session.add(new_white_user)
+                    added_admins_count += 1
+                    
+            await session.commit()
+            await message.reply(
+                f"✅ این {chat_type} با موفقیت به زون امنیتی مجموعه شما متصل شد.\n\n"
+                f"⚙️ **گزارش اسکن اولیه:**\n"
+                f"تعداد `{added_admins_count}` ادمین فعال شناسایی و به صورت خودکار به لیست سفید مجموعه اضافه شدند تا تداخلی در دسترسی آن‌ها ایجاد نشود.",
+                parse_mode="Markdown"
+            )
+        except Exception as e:
+            await session.commit()
+            await message.reply(
+                f"✅ این {chat_type} ثبت شد، اما ربات نتوانست لیست اعضا/ادمین‌ها را اسکن کند.\n"
+                f"⚠️ **علت:** مطمئن شوید ربات در این چت دسترسی کامل ادمین (دسترسی مدیریت کاربران) را دارد.",
+                parse_mode="Markdown"
+            )
